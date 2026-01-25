@@ -7,6 +7,11 @@ Cargo.lock
 # Bevy-specific
 # Remove Cargo.lock from ignore if this is a binary crate you want to lock dependencies for
 # Cargo.lock
+# Shader hot-reload cache
+/assets/.bevy/
+
+# Bevy internal cache (older versions)
+.bevy/
 
 # Build artifacts
 /debug/
@@ -80,7 +85,11 @@ build/
 # Asset processing cache (if using Bevy asset processor)
 imported_assets/
 
-# Profiling
+# --------------------
+# Coverage / profiling
+# --------------------
+*.profraw
+*.lcov
 perf.data
 perf.data.old
 *.prof
