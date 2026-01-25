@@ -16,6 +16,7 @@
 // opt-level = 3
 
 use bevy::prelude::*;
+use std::collections::VecDeque;
 
 fn main() {
     App::new()
@@ -28,7 +29,7 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, setup_scene)
-        .add_systems(Update, (animate_cube, animate_camera, update_fps_display))
+        .add_systems(Update, (animate_cube, animate_camera, log_fps, update_fps_display))
         .run();
 }
 
@@ -43,7 +44,11 @@ struct OrbitCamera {
 }
 
 #[derive(Component)]
-struct FpsCounter;
+struct FpsCounter {
+    samples: VecDeque<f32>,
+    last_update: f32,
+    last_log: f32,
+}
 
 fn setup_scene(
     mut commands: Commands,
@@ -147,7 +152,11 @@ fn setup_scene(
                     margin: UiRect::top(Val::Px(20.0)),
                     ..default()
                 },
-                FpsCounter,
+                FpsCounter {
+                    samples: VecDeque::new(),
+                    last_update: 0.0,
+                    last_log: 0.0,
+                },
             ));
 
             // Info text
@@ -191,9 +200,39 @@ fn animate_camera(mut query: Query<(&mut Transform, &mut OrbitCamera)>, time: Re
     }
 }
 
-fn update_fps_display(time: Res<Time>, mut query: Query<&mut Text, With<FpsCounter>>) {
-    for mut text in &mut query {
+fn update_fps_display(time: Res<Time>, mut query: Query<(&mut Text, &mut FpsCounter)>) {
+    for (mut text, mut fps_counter) in &mut query {
+        let current_time = time.elapsed_secs();
         let fps = 1.0 / time.delta_secs();
-        text.0 = format!("FPS: {:.0}", fps);
+        
+        // Add current FPS sample
+        fps_counter.samples.push_back(fps);
+        
+        // Remove samples older than 1 second
+        while fps_counter.samples.len() > 1 && current_time - fps_counter.last_update > 1.0 {
+            fps_counter.samples.pop_front();
+        }
+        
+        // Update display every 1 second
+        if current_time - fps_counter.last_update >= 1.0 {
+            if !fps_counter.samples.is_empty() {
+                let avg_fps: f32 = fps_counter.samples.iter().sum::<f32>() / fps_counter.samples.len() as f32;
+                text.0 = format!("FPS: {:.0}", avg_fps);
+            }
+            fps_counter.last_update = current_time;
+        }
+    }
+}
+
+fn log_fps(time: Res<Time>, mut query: Query<&mut FpsCounter>) {
+    for mut fps_counter in &mut query {
+        let current_time = time.elapsed_secs();
+        
+        // Log FPS every 200ms
+        if current_time - fps_counter.last_log >= 0.2 {
+            let fps = 1.0 / time.delta_secs();
+            info!("Current FPS: {:.2}", fps);
+            fps_counter.last_log = current_time;
+        }
     }
 }
