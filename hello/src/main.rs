@@ -22,7 +22,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Bevy 0.18 - Aurora DX Distrobox".into(),
-                resolution: (1024., 768.).into(),
+                resolution: (1024, 768).into(),
                 ..default()
             }),
             ..default()
@@ -85,16 +85,15 @@ fn setup_scene(
         Transform::from_xyz(5.0, 8.0, 5.0),
     ));
 
-    // Spawn ambient light
-    commands.insert_resource(AmbientLight {
-        color: Color::srgb(0.4, 0.5, 0.6),
-        brightness: 200.0,
-    });
-
-    // Spawn orbiting camera
+    // Spawn orbiting camera with ambient light
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(8.0, 6.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+        AmbientLight {
+            color: Color::srgb(0.4, 0.5, 0.6),
+            brightness: 200.0,
+            affects_lightmapped_meshes: false,
+        },
         OrbitCamera {
             radius: 10.0,
             speed: 0.3,
