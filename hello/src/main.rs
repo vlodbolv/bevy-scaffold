@@ -17,20 +17,51 @@
 
 use bevy::prelude::*;
 use std::collections::VecDeque;
+use std::env;
+use std::fs;
+
+fn detect_environment() -> String {
+    // Check if running in Distrobox
+    let in_distrobox = env::var("CONTAINER_ID").is_ok() 
+        || fs::metadata("/.dockerenv").is_ok()
+        || fs::read_to_string("/run/.containerenv").is_ok();
+    
+    // Check if on Aurora/Fedora
+    let os_info = fs::read_to_string("/etc/os-release").unwrap_or_default();
+    let is_aurora = os_info.contains("Aurora");
+    let is_fedora = os_info.contains("Fedora");
+    
+    match (in_distrobox, is_aurora, is_fedora) {
+        (true, true, _) => "Aurora DX Distrobox".to_string(),
+        (true, _, true) => "Fedora Distrobox".to_string(),
+        (true, _, _) => "Container Environment".to_string(),
+        (false, true, _) => "Aurora DX (Host)".to_string(),
+        (false, _, true) => "Fedora (Host)".to_string(),
+        _ => "Native Environment".to_string(),
+    }
+}
 
 fn main() {
+    let environment = detect_environment();
+    
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Bevy 0.18 - Aurora DX Distrobox".into(),
+                title: format!("Bevy 0.18 - {}", environment),
                 resolution: (1024, 768).into(),
                 ..default()
             }),
             ..default()
         }))
+        .insert_resource(EnvironmentInfo { name: environment })
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (animate_cube, animate_camera, log_fps, update_fps_display))
         .run();
+}
+
+#[derive(Resource)]
+struct EnvironmentInfo {
+    name: String,
 }
 
 #[derive(Component)]
@@ -54,6 +85,7 @@ fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    env_info: Res<EnvironmentInfo>,
 ) {
     // Spawn animated cube
     commands.spawn((
@@ -128,7 +160,7 @@ fn setup_scene(
 
             // Subtitle
             parent.spawn((
-                Text::new("Running in Aurora DX Distrobox"),
+                Text::new(format!("Running on {}", env_info.name)),
                 TextFont {
                     font_size: 20.0,
                     ..default()
