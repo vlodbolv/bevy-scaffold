@@ -1,2 +1,3 @@
 # bevy-dev
-Bevy scaffold
+Bevy scaffold which runs inside a distrobox
+
