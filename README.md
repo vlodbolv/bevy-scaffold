@@ -79,12 +79,12 @@ You can replace the hello/src/ directory with additional modules (for example: s
 
 Common workflows
 Rebuild and run after code changes:
-# cd hello
-# cargo run
+### cd hello
+### cargo run
 
 Format and lint:
-# cargo fmt
-# cargo clippy
+### cargo fmt
+### cargo clippy
 
 Customizing the scaffold
 Once the environment works, you can:
