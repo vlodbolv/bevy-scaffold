@@ -44,6 +44,10 @@ Create (or update) a dedicated dev container for this project.
 
 Mount the repo into the container for tight host–container integration. 
 
+Mount the repo into the container for tight host–container integration. 
+e.g.
+### distrobox enter bevy-dev
+
 Then, inside the container, run:
 
 ### ./setup_inside_distrobox.sh
