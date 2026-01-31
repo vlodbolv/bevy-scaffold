@@ -1,98 +1,123 @@
 # bevy-scaffold
 
-A minimal **Bevy** project scaffold with shell scripts to spin up a reproducible development container using Distrobox. 
-
-This repository is meant as a starting point for new Bevy projects, giving you:
-
-- A clean, opinionated layout for a Bevy app.
-- Host–container integration via Distrobox for a stable Rust and Bevy toolchain.
-- Shell scripts to bootstrap and configure the dev environment (`init_distrobox.sh`, `setup_inside_distrobox.sh`).
----
-
-## Features
-
-- Bevy-based Rust application scaffold (main crate plus space for plugins/systems/assets).  
-- Distrobox-powered development environment, so you can keep your host system clean.   
-- Scripted initialization to install Rust, system dependencies, and Bevy build requirements in the container. 
+A minimal **Bevy 0.18** project scaffold designed for reproducible development using **Distrobox**. This repository provides a deterministic environment for high-quality video rendering and general Bevy development.
 
 ---
 
-## Prerequisites
+## 🌟 Features
 
-On the host (your main OS), you should have:
-
-- A compatible Linux distribution. [  
-- `distrobox` installed and working (`distrobox-create` / `distrobox-enter` available). 
-- `podman` or `docker`, depending on your Distrobox backend. 
-- `git` to clone this repository. 
+* **Bevy 0.18 + Rust:** Pre-configured for the latest ECS standards (Required Components, `Mesh3d`, `MeshMaterial3d`).
+* **Deterministic Rendering:** Built-in logic to export 30 FPS video frames without simulation "jitter," regardless of hardware lag.
+* **Distrobox Integration:** Host-container workflow keeps your main OS clean while providing all necessary Vulkan, X11, and Wayland headers.
+* **FFmpeg Ready:** Pre-configured with **RPM Fusion** to support H.264/MP4 encoding directly from your container.
 
 ---
 
-## Getting started
+## 📋 Prerequisites
 
-Clone the repository:
+On your **host machine**, you need:
 
-### git clone https://github.com/vlodbolv/bevy-scaffold.git
-### cd bevy-scaffold
+* **Distrobox** installed.
+* **Podman** (preferred) or **Docker**.
+* **NVIDIA/AMD/Intel Drivers** (Vulkan support is required for Bevy).
 
-Initialize the Distrobox container:
-### ./init_distrobox.sh
+---
 
-This script is expected to:
+## 🚀 Getting Started
 
-Create (or update) a dedicated dev container for this project.
+### 1. Initialize the Environment
 
-Mount the repo into the container for tight host–container integration. 
+Clone the repository and spin up the container:
 
-Mount the repo into the container for tight host–container integration. 
-e.g.
-### distrobox enter bevy-dev
+```bash
+git clone https://github.com/vlodbolv/bevy-scaffold.git
+cd bevy-scaffold
 
-Then, inside the container, run:
+# Create the container (bevy-dev)
+./init_distrobox.sh
 
-### ./setup_inside_distrobox.sh
+# Enter the container
+distrobox enter bevy-dev
 
-This script is expected to:
+```
 
-Install Rust (via rustup) and required toolchain components. 
+### 2. Run Internal Setup
 
-Install system dependencies needed for Bevy (graphics, audio, windowing libraries, etc. for your distro).
+Once inside the container, install Rust and the system dependencies (including FFmpeg with H.264 support):
 
-Run cargo build once so subsequent builds are faster.
+```bash
+./setup_inside_distrobox.sh
 
-Finally, to run the Bevy app from inside the container:
+```
 
-### cargo run
+### 3. Run and Render
 
-Project structure
-The repo is intended to follow a conventional Bevy layout. 
+Navigate to the project and run the deterministic render:
+
+```bash
+cd hello
+cargo run
+
+```
+
+The application will render exactly **5 seconds (150 frames)** of animation and automatically close.
+
+---
+
+## 🎬 Video Export Workflow
+
+This scaffold is designed to output a PNG sequence into the `hello/out/` directory. To convert these frames into a high-quality MP4, run the following inside your Distrobox:
+
+```bash
+ffmpeg -r 30 -i out/%05d.png -vcodec libx264 -crf 18 -pix_fmt yuv420p output.mp4
+
+```
+
+---
+
+## 📂 Project Structure
+
+```text
 bevy-scaffold/
-├─ hello/
-│  ├─ Cargo.toml        # Rust crate and Bevy dependency configuration
-│  └─ src/
-│     └─ main.rs        # Application entry point, Bevy App setup
-├─ init_distrobox.sh             # Host-side script to create/enter container
-├─ setup_inside_distrobox.sh     # In-container setup script
-└─ README.md
+├── hello/
+│   ├── Cargo.toml         # Configured for Bevy 0.18 & bevy_image_export 0.16
+│   ├── src/
+│   │   └── main.rs        # 30 FPS deterministic logic + Writer<AppExit>
+│   └── out/               # Generated PNG frames (ignored by git)
+├── init_distrobox.sh      # Host-side: creates the Fedora-based container
+├── setup_inside_distrobox.sh # Container-side: installs Rust, Vulkan, & FFmpeg
+└── README.md
 
-You can replace the hello/src/ directory with additional modules (for example: systems.rs, plugins.rs) as your Bevy project grows. 
+```
 
-Common workflows
-Rebuild and run after code changes:
-### cd hello
-### cargo run
+---
 
-Format and lint:
-### cargo fmt
-### cargo clippy
+## ⚙️ Technical Notes
 
-Customizing the scaffold
-Once the environment works, you can:
+### Deterministic Time
 
-Add new Bevy plugins / systems under hello/src/. 
+The scaffold utilizes `Time<Fixed>` and the `FixedUpdate` schedule. This ensures that every exported frame represents exactly  of a second of simulation time, even if the CPU takes several seconds to write a single PNG to disk.
 
-Extend setup_inside_distrobox.sh to install extra tooling (for example: cargo-watch, just, additional libraries).
+### Bevy 0.18 Standards
 
-Adjust init_distrobox.sh to change base image, container name, or mounted paths.
+The included `main.rs` uses the modern 0.18 API:
 
-Turn the repository into a workspace later by adding a root Cargo.toml with a [workspace] section if you introduce additional crates.
+* **`Mesh3d` / `MeshMaterial3d**` instead of deprecated `PbrBundle`.
+* **`Writer<AppExit>`** for clean system termination.
+* **`delta_secs()` / `elapsed_secs()**` for standardized time access.
+
+---
+
+## 🛠 Troubleshooting
+
+**Container won't stop?**
+If Distrobox refuses to stop due to "active sessions," force it from your host:
+
+```bash
+podman stop -f bevy-dev
+
+```
+
+**Missing Codecs?**
+If FFmpeg fails to recognize `libx264`, ensure `setup_inside_distrobox.sh` successfully added the **RPM Fusion Nonfree** repositories.
+
